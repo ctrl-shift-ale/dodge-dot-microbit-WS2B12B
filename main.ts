@@ -58,6 +58,11 @@ function update_velocity_x () {
     }
     serial.writeValue("vel x", velocity_x)
 }
+input.onButtonPressed(Button.A, function () {
+    if (DEBUGGING) {
+        state = "TEST PLAYER"
+    }
+})
 function win () {
     state = "WIN"
     basic.clearScreen()
@@ -103,6 +108,7 @@ function update_player () {
     if (player_current_x_pos == player_prev_x_pos) {
         player_current_colour = BLUE
     }
+    player_led_index = 60 + player_current_x_pos / 1000
     serial.writeValue("x", player_current_x_pos)
 }
 function draw_background () {
@@ -147,6 +153,11 @@ function check_score () {
         win()
     }
 }
+input.onButtonPressed(Button.B, function () {
+    if (DEBUGGING) {
+        state = "TEST BACKGROUND"
+    }
+})
 function init_display () {
     BRIGHTNESS_OFF = 0
     RED = 0
@@ -193,7 +204,7 @@ function init_health_bar () {
 }
 function init_player () {
     REFRESH_PLAYER_TILE_MS = 100
-    PLAYER_SPEED_TIMESTEP_MS = 1000
+    PLAYER_SPEED_TIMESTEP_MS = 100
     player_current_brightness = BRIGHTNESS_PLAYER_MIN
     player_current_colour = BLUE
     player_current_x_pos = 3000
@@ -210,7 +221,6 @@ function update_health (num: number) {
     }
 }
 function check_overlap () {
-    player_led_index = 60 + player_current_x_pos / 1000
     if (background[player_led_index] == 1) {
         update_health(MINE_TILE_DAMAGE * -1)
         music.play(music.createSoundExpression(WaveShape.Square, 5000, 5000, 255, 0, 1000, SoundExpressionEffect.Tremolo, InterpolationCurve.Logarithmic), music.PlaybackMode.InBackground)
@@ -277,6 +287,8 @@ let DISPLAY: neopixel.Strip = null
 let score = 0
 let SCORE_LIMIT = 0
 let state = ""
+let DEBUGGING = false
+DEBUGGING = true
 music.setBuiltInSpeakerEnabled(true)
 state = "INIT"
 init_tilt()
@@ -291,30 +303,37 @@ DISPLAY.show()
 state = "READY"
 basic.forever(function () {
     refresh_display = false
-    if (state == "ON") {
-        if (control.millis() - last_tilt_refresh >= 0) {
-            update_velocity_x()
-            update_velocity_y()
-            last_tilt_refresh = control.millis()
-        }
-        if (control.millis() - last_dot_refresh >= REFRESH_PLAYER_TILE_MS) {
-            DISPLAY.clear()
+    if (control.millis() - last_tilt_refresh >= 0) {
+        update_velocity_x()
+        update_velocity_y()
+        last_tilt_refresh = control.millis()
+    }
+    if (control.millis() - last_dot_refresh >= REFRESH_PLAYER_TILE_MS) {
+        DISPLAY.clear()
+        if (state == "ON" || state == "TEST PLAYER") {
             update_player()
+        }
+        if (state == "ON") {
             draw_background()
+        }
+        if (state == "ON" || state == "TEST PLAYER") {
             set_player_led()
             refresh_display = true
             last_dot_refresh = control.millis()
-            last_dot_refresh = control.millis()
         }
-        if (control.millis() - scrolling_refresh >= scrolling_timestep_ms) {
-            DISPLAY.clear()
+    }
+    if (control.millis() - scrolling_refresh >= scrolling_timestep_ms) {
+        DISPLAY.clear()
+        if (state == "ON" || state == "TEST BACKGROUND") {
             update_background()
             draw_background()
+        }
+        if (state == "ON") {
             check_overlap()
             set_player_led()
-            DISPLAY.show()
-            scrolling_refresh = control.millis()
         }
+        refresh_display = true
+        scrolling_refresh = control.millis()
     }
     if (refresh_display) {
         DISPLAY.show()
