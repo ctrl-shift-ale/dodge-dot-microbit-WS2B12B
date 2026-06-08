@@ -11,6 +11,7 @@ function update_background () {
     ]
     empty_row = !(empty_row)
     if (empty_row == false) {
+        score += 1
         n_mines = randint(1, 3)
         mines_pos = []
         for (let index = 0; index <= n_mines - 1; index++) {
@@ -57,12 +58,34 @@ function update_velocity_x () {
     }
     serial.writeValue("vel x", velocity_x)
 }
-input.onButtonPressed(Button.A, function () {
-    ACTIVE = true
-})
+function win () {
+    state = "WIN"
+    basic.clearScreen()
+    music._playDefaultBackground(music.builtInPlayableMelody(Melodies.Funk), music.PlaybackMode.InBackground)
+    basic.showIcon(IconNames.Heart)
+    basic.pause(1000)
+    basic.showString("YOU WON!! CONGRATULATIONS")
+    basic.pause(500)
+    basic.showNumber(score)
+    basic.clearScreen()
+    basic.pause(500)
+    state = "READY"
+}
+function game_over () {
+    state = "GAME OVER"
+    DISPLAY.clear()
+    basic.clearScreen()
+    music._playDefaultBackground(music.builtInPlayableMelody(Melodies.Funeral), music.PlaybackMode.InBackground)
+    basic.showString("SCORE")
+    basic.pause(500)
+    basic.showNumber(score)
+    basic.clearScreen()
+    basic.pause(500)
+    state = "READY"
+}
 function set_player_led () {
     led_index = player_current_x_pos / 1000
-    index = DISPLAY.range(led_index, 1)
+    index = DISPLAY.range(60 + led_index, 1)
     index.showColor(neopixel.hsl(player_current_colour, 50, player_current_brightness))
 }
 function update_player () {
@@ -97,12 +120,27 @@ function draw_background () {
         index.showColor(neopixel.hsl(tile_colour, 50, tile_brightness))
     }
 }
+function draw_health_bar () {
+	
+}
 function init_tilt () {
     tilt_accum = 0
     tilt = 0
     HOR_TILT_DEADZONE = 100
     MAX_VERTICAL_TILT = 400
     friction = 0.66
+}
+input.onButtonPressed(Button.AB, function () {
+    basic.clearScreen()
+    state = "ON"
+    score = 0
+    music._playDefaultBackground(music.builtInPlayableMelody(Melodies.Dadadadum), music.PlaybackMode.InBackground)
+    init_health_bar()
+})
+function check_score () {
+    if (score >= SCORE_LIMIT) {
+        win()
+    }
 }
 function init_display () {
     BRIGHTNESS_OFF = 0
@@ -129,6 +167,10 @@ function update_velocity_y () {
     scrolling_timestep_ms = Math.map(scrolling_timestep_ms, 355, 2020, SCROLLING_TIMESTEP_MAX_MS, SCROLLING_TIMESTEP_MIN_MS)
 }
 function init_background () {
+    background = []
+    for (let index2 = 0; index2 < 64; index2++) {
+        background.push(0)
+    }
     scrolling_timestep_ms = 1000
     SCROLLING_TIMESTEP_MIN_MS = 2000
     SCROLLING_TIMESTEP_MAX_MS = 500
@@ -136,6 +178,10 @@ function init_background () {
     healing_tile_prob = 2
     scrolling_refresh = 0
     empty_row = true
+}
+function init_health_bar () {
+    HEALTH_MAX = 50
+    health = 0
 }
 function init_player () {
     REFRESH_PLAYER_TILE_MS = 100
@@ -147,11 +193,14 @@ function init_player () {
     PLAYER_MAX_SPEED = 14000
     max_velocity_per_timestep = PLAYER_MAX_SPEED / (1000 / PLAYER_SPEED_TIMESTEP_MS)
 }
-/**
- * tilt range (-1023, 1023)
- * 
- * max dot speed = 2 dots per sec
- */
+function update_health (num: number) {
+    health = Math.constrain(health + 0, 0, HEALTH_MAX)
+    if (health == 0) {
+        game_over()
+    } else {
+        draw_health_bar()
+    }
+}
 let last_dot_refresh = 0
 let last_tilt_refresh = 0
 let refresh_display = false
@@ -159,6 +208,8 @@ let PLAYER_MAX_SPEED = 0
 let player_index_past = 0
 let PLAYER_SPEED_TIMESTEP_MS = 0
 let REFRESH_PLAYER_TILE_MS = 0
+let health = 0
+let HEALTH_MAX = 0
 let scrolling_refresh = 0
 let SCROLLING_TIMESTEP_MIN_MS = 0
 let SCROLLING_TIMESTEP_MAX_MS = 0
@@ -194,6 +245,7 @@ let velocity_x = 0
 let friction = 0
 let HOR_TILT_DEADZONE = 0
 let acceleration_x = 0
+let background: number[] = []
 let healing_tile_prob = 0
 let pos = 0
 let done = false
@@ -202,22 +254,22 @@ let n_mines = 0
 let empty_row = false
 let row: number[] = []
 let DISPLAY: neopixel.Strip = null
-let background: number[] = []
+let score = 0
+let SCORE_LIMIT = 0
+let state = ""
 let ACTIVE = false
-ACTIVE = false
-background = []
-for (let index2 = 0; index2 < 64; index2++) {
-    background.push(0)
-}
+state = "INIT"
 init_tilt()
 init_display()
 init_player()
 init_background()
+SCORE_LIMIT = 100
+score = 0
 DISPLAY = neopixel.create(DigitalPin.P0, 64, NeoPixelMode.RGB_RGB)
-let single_led = DISPLAY.range(0, 1)
+state = "READY"
 basic.forever(function () {
     refresh_display = false
-    if (ACTIVE) {
+    if (state == "ON") {
         if (control.millis() - last_tilt_refresh >= 0) {
             update_velocity_x()
             update_velocity_y()
