@@ -139,7 +139,7 @@ input.onButtonPressed(Button.AB, function () {
     basic.clearScreen()
     state = "ON"
     score = 0
-    music._playDefaultBackground(music.builtInPlayableMelody(Melodies.Dadadadum), music.PlaybackMode.InBackground)
+    music._playDefaultBackground(music.builtInPlayableMelody(Melodies.Prelude), music.PlaybackMode.InBackground)
     init_health_bar()
 })
 function check_score () {
@@ -188,7 +188,8 @@ function init_background () {
 }
 function init_health_bar () {
     HEALTH_MAX = 50
-    health = 0
+    health = HEALTH_MAX
+    draw_health_bar()
 }
 function init_player () {
     REFRESH_PLAYER_TILE_MS = 100
@@ -285,6 +286,8 @@ init_background()
 SCORE_LIMIT = 100
 score = 0
 DISPLAY = neopixel.create(DigitalPin.P0, 64, NeoPixelMode.RGB_RGB)
+DISPLAY.showRainbow(1, 360)
+DISPLAY.show()
 state = "READY"
 basic.forever(function () {
     refresh_display = false
