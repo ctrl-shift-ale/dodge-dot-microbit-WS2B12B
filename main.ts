@@ -84,8 +84,7 @@ function game_over () {
     state = "READY"
 }
 function set_player_led () {
-    led_index = player_current_x_pos / 1000
-    index = DISPLAY.range(60 + led_index, 1)
+    index = DISPLAY.range(player_led_index, 1)
     index.showColor(neopixel.hsl(player_current_colour, 50, player_current_brightness))
 }
 function update_player () {
@@ -107,21 +106,27 @@ function update_player () {
     serial.writeValue("x", player_current_x_pos)
 }
 function draw_background () {
-    for (let led_index = 0; led_index <= background.length - 1; led_index++) {
+    for (let player_led_index = 0; player_led_index <= background.length - 1; player_led_index++) {
         tile_brightness = 40
-        if (background[led_index] == 1) {
+        if (background[player_led_index] == 1) {
             tile_colour = PURPLE
-        } else if (background[led_index] == 2) {
+        } else if (background[player_led_index] == 2) {
             tile_colour = YELLOW
         } else {
             tile_brightness = 0
         }
-        index = DISPLAY.range(led_index, 1)
+        index = DISPLAY.range(player_led_index, 1)
         index.showColor(neopixel.hsl(tile_colour, 50, tile_brightness))
     }
 }
 function draw_health_bar () {
-	
+    for (let index = 0; index <= 4; index++) {
+        if (health > index * 10) {
+            led.plot(index, 2)
+        } else {
+            led.unplot(index, 2)
+        }
+    }
 }
 function init_tilt () {
     tilt_accum = 0
@@ -178,6 +183,8 @@ function init_background () {
     healing_tile_prob = 2
     scrolling_refresh = 0
     empty_row = true
+    HEALING_TILE_BONUS = 2
+    MINE_TILE_DAMAGE = 1
 }
 function init_health_bar () {
     HEALTH_MAX = 50
@@ -201,6 +208,16 @@ function update_health (num: number) {
         draw_health_bar()
     }
 }
+function check_overlap () {
+    player_led_index = 60 + player_current_x_pos / 1000
+    if (background[player_led_index] == 1) {
+        update_health(MINE_TILE_DAMAGE * -1)
+        music.play(music.createSoundExpression(WaveShape.Square, 5000, 5000, 255, 0, 1000, SoundExpressionEffect.Tremolo, InterpolationCurve.Logarithmic), music.PlaybackMode.InBackground)
+    } else if (background[player_led_index] == 2) {
+        update_health(HEALING_TILE_BONUS)
+        music.play(music.createSoundExpression(WaveShape.Noise, 500, 499, 255, 0, 1000, SoundExpressionEffect.None, InterpolationCurve.Linear), music.PlaybackMode.InBackground)
+    }
+}
 let last_dot_refresh = 0
 let last_tilt_refresh = 0
 let refresh_display = false
@@ -208,8 +225,9 @@ let PLAYER_MAX_SPEED = 0
 let player_index_past = 0
 let PLAYER_SPEED_TIMESTEP_MS = 0
 let REFRESH_PLAYER_TILE_MS = 0
-let health = 0
 let HEALTH_MAX = 0
+let MINE_TILE_DAMAGE = 0
+let HEALING_TILE_BONUS = 0
 let scrolling_refresh = 0
 let SCROLLING_TIMESTEP_MIN_MS = 0
 let SCROLLING_TIMESTEP_MAX_MS = 0
@@ -221,6 +239,7 @@ let BRIGHTNESS_OFF = 0
 let MAX_VERTICAL_TILT = 0
 let tilt = 0
 let tilt_accum = 0
+let health = 0
 let YELLOW = 0
 let PURPLE = 0
 let tile_colour = 0
@@ -237,8 +256,8 @@ let RED = 0
 let compressed_velocity_for_led_colouring = 0
 let player_current_brightness = 0
 let player_current_colour = 0
+let player_led_index = 0
 let index: neopixel.Strip = null
-let led_index = 0
 let player_current_x_pos = 0
 let max_velocity_per_timestep = 0
 let velocity_x = 0
@@ -257,7 +276,7 @@ let DISPLAY: neopixel.Strip = null
 let score = 0
 let SCORE_LIMIT = 0
 let state = ""
-let ACTIVE = false
+music.setBuiltInSpeakerEnabled(true)
 state = "INIT"
 init_tilt()
 init_display()
@@ -288,6 +307,7 @@ basic.forever(function () {
             DISPLAY.clear()
             update_background()
             draw_background()
+            check_overlap()
             set_player_led()
             DISPLAY.show()
             scrolling_refresh = control.millis()
